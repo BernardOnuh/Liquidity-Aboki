@@ -85,11 +85,20 @@ const updateProfileValidation = [
 // PUBLIC ROUTES (NO AUTHENTICATION REQUIRED)
 // =========================================
 
+// Health check - should be first
+router.get('/health', (_, res) => {
+  res.json({
+    status: 'ok',
+    service: 'auth',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Authentication routes
 router.post('/login', loginValidation, validateRequest, authController.login);
 router.post('/register', registerValidation, validateRequest, authController.register);
 
-// Password reset routes (MUST BE BEFORE authMiddleware)
+// Password reset routes - EXPLICITLY PUBLIC
 router.post('/forgot-password', forgotPasswordValidation, validateRequest, authController.forgotPassword);
 router.post('/reset-password', resetPasswordValidation, validateRequest, authController.resetPassword);
 
@@ -98,15 +107,6 @@ if (process.env.NODE_ENV === 'development') {
   router.post('/test/welcome-email', authController.testWelcomeEmail);
   router.get('/email-stats', authController.getEmailStats);
 }
-
-// Health check
-router.get('/health', (_, res) => {
-  res.json({
-    status: 'ok',
-    service: 'auth',
-    timestamp: new Date().toISOString()
-  });
-});
 
 // =========================================
 // PROTECTED ROUTES (AUTHENTICATION REQUIRED)
