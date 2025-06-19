@@ -118,62 +118,122 @@ export class AuthService {
   /**
    * Generate password reset token and save to database
    */
-  async generatePasswordResetToken(email: string): Promise<ResetTokenData | null> {
-    try {
-      // Check if user exists
-      const user = await prisma.user.findUnique({
-        where: { email: email.toLowerCase() },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          isActive: true
-        }
-      });
-      
-      if (!user) {
-        // Return null but don't reveal if email exists
-        return null;
-      }
+// src/services/auth.service.ts - Fixed generatePasswordResetToken method
 
-      if (!user.isActive) {
-        throw new Error('Account is deactivated');
-      }
-
-      // Generate secure random token
-      const resetToken = crypto.randomBytes(32).toString('hex');
-      
-      // Hash the token before storing (for security)
-      const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-      
-      // Set expiration time (1 hour from now)
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-      // Delete any existing reset tokens for this user
-      await prisma.passwordReset.deleteMany({
-        where: { userId: user.id }
-      });
-
-      // Save reset token to database
-      await prisma.passwordReset.create({
-        data: {
-          userId: user.id,
-          token: hashedToken,
-          expiresAt
-        }
-      });
-
-      return {
-        email: user.email,
-        name: user.name,
-        resetToken // Return unhashed token for email link
-      };
-    } catch (error: any) {
-      console.error('Error generating password reset token:', error);
-      throw new Error('Failed to generate password reset token');
+async generatePasswordResetToken(email: string): Promise<ResetTokenData | null> {
+  console.log('🔄 [PASSWORD RESET] Starting token generation for:', email);
+  
+  try {
+    // Validate email input
+    if (!email || typeof email !== 'string') {
+      console.error('❌ [PASSWORD RESET] Invalid email provided:', email);
+      throw new Error('Valid email is required');
     }
-  }
 
+    const normalizedEmail = email.toLowerCase().trim();
+    console.log('🔍 [PASSWORD RESET] Looking for user with email:', normalizedEmail);
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        isActive: true
+      }
+    });
+    
+    console.log('👤 [PASSWORD RESET] User found:', user ? `${user.name} (${user.email})` : 'No user found');
+    
+    if (!user) {
+      // Return null but don't reveal if email exists (security best practice)
+      console.log('ℹ️ [PASSWORD RESET] User not found, returning null for security');
+      return null;
+    }
+
+    if (!user.isActive) {
+      console.log('❌ [PASSWORD RESET] User account is deactivated');
+      throw new Error('Account is deactivated');
+    }
+
+    console.log('🔑 [PASSWORD RESET] Generating reset token...');
+
+    // Generate secure random token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    console.log('✅ [PASSWORD RESET] Token generated, length:', resetToken.length);
+    
+    // Hash the token before storing (for security)
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    console.log('🔒 [PASSWORD RESET] Token hashed for storage');
+    
+    // Set expiration time (1 hour from now)
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    console.log('⏰ [PASSWORD RESET] Token expires at:', expiresAt.toISOString());
+
+    console.log('🗑️ [PASSWORD RESET] Cleaning up existing reset tokens for user...');
+    
+    // Delete any existing reset tokens for this user
+    const deleteResult = await prisma.passwordReset.deleteMany({
+      where: { userId: user.id }
+    });
+    console.log('🗑️ [PASSWORD RESET] Deleted existing tokens:', deleteResult.count);
+
+    console.log('💾 [PASSWORD RESET] Saving new reset token to database...');
+
+    // Save reset token to database
+    const resetRecord = await prisma.passwordReset.create({
+      data: {
+        userId: user.id,
+        token: hashedToken,
+        expiresAt
+      }
+    });
+    
+    console.log('✅ [PASSWORD RESET] Reset token saved with ID:', resetRecord.id);
+
+    const result = {
+      email: user.email,
+      name: user.name,
+      resetToken // Return unhashed token for email link
+    };
+
+    console.log('🎉 [PASSWORD RESET] Token generation completed successfully');
+    return result;
+
+  } catch (error: any) {
+    console.error('💥 [PASSWORD RESET] Error occurred:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack
+    });
+
+    // Handle specific Prisma errors
+    if (error.code === 'P2002') {
+      console.error('❌ [PASSWORD RESET] Unique constraint violation');
+      throw new Error('A reset token already exists. Please try again in a moment.');
+    }
+    
+    if (error.code === 'P2025') {
+      console.error('❌ [PASSWORD RESET] Record not found');
+      throw new Error('User not found');
+    }
+    
+    if (error.code?.startsWith('P')) {
+      console.error('❌ [PASSWORD RESET] Database error:', error.code);
+      throw new Error('Database error occurred. Please try again.');
+    }
+
+    // Re-throw the original error if it's already a user-friendly message
+    if (error.message === 'Account is deactivated' || error.message === 'Valid email is required') {
+      throw error;
+    }
+
+    // Generic error for unexpected issues
+    throw new Error('Failed to generate password reset token');
+  }
+}
   /**
    * Reset password using the token
    */
