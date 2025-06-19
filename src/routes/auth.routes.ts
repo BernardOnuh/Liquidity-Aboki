@@ -9,7 +9,7 @@ const router = Router();
 const authController = new AuthController();
 
 // Handle trailing slashes middleware
-router.use((req, res, next) => {
+router.use((req, _, next) => {
   if (req.path.endsWith('/') && req.path.length > 1) {
     req.url = req.url.slice(0, -1);
   }
