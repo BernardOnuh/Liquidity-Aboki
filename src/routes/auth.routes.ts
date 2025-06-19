@@ -30,6 +30,22 @@ const registerValidation = [
     .withMessage('Name must be at least 2 characters long')
 ];
 
+// NEW: Password reset validations
+const forgotPasswordValidation = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+];
+
+const resetPasswordValidation = [
+  body('token')
+    .notEmpty()
+    .withMessage('Reset token is required'),
+  body('newPassword')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
+];
+
 const changePasswordValidation = [
   body('currentPassword')
     .notEmpty()
@@ -57,13 +73,41 @@ const updateProfileValidation = [
     .withMessage('Valid email is required')
 ];
 
-// Public routes
+// =========================================
+// PUBLIC ROUTES (NO AUTHENTICATION REQUIRED)
+// =========================================
+
+// Authentication routes
 router.post('/login', loginValidation, validateRequest, authController.login);
 router.post('/register', registerValidation, validateRequest, authController.register);
 
-// Protected routes (require authentication)
-router.use(authMiddleware); // Apply auth middleware to all routes below
+// Password reset routes (MUST BE BEFORE authMiddleware)
+router.post('/forgot-password', forgotPasswordValidation, validateRequest, authController.forgotPassword);
+router.post('/reset-password', resetPasswordValidation, validateRequest, authController.resetPassword);
 
+// Development/testing routes (if needed)
+if (process.env.NODE_ENV === 'development') {
+  router.post('/test/welcome-email', authController.testWelcomeEmail);
+  router.get('/email-stats', authController.getEmailStats);
+}
+
+// Health check
+router.get('/health', (_, res) => {
+  res.json({
+    status: 'ok',
+    service: 'auth',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// =========================================
+// PROTECTED ROUTES (AUTHENTICATION REQUIRED)
+// =========================================
+
+// Apply auth middleware to all routes below this point
+router.use(authMiddleware);
+
+// Protected routes
 router.get('/profile', authController.getProfile);
 router.put('/profile', updateProfileValidation, validateRequest, authController.updateProfile);
 router.post('/change-password', changePasswordValidation, validateRequest, authController.changePassword);
