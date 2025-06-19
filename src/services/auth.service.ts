@@ -515,23 +515,34 @@ export class AuthService {
     };
   }
 
-  private generateToken(userId: string, email: string): string {
-    return jwt.sign(
-      { userId, email },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
-    );
-  }
+// Update this method in your AuthService
+private generateToken(userId: string, email: string): string {
+  return jwt.sign(
+    { 
+      id: userId,      // Use "id" for consistency with req.user.id
+      userId: userId,  // Keep "userId" for backward compatibility
+      email 
+    },
+    process.env.JWT_SECRET || 'your-secret-key',
+    { expiresIn: '7d' }
+  );
+}
 
-  // Helper function to verify JWT token
-  verifyToken(token: string) {
-    try {
-      return jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    } catch (error) {
-      throw new Error('Invalid token');
-    }
+// Also update the verifyToken method
+verifyToken(token: string) {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
+    
+    // Ensure consistent user object structure
+    return {
+      id: decoded.id || decoded.userId,
+      userId: decoded.userId || decoded.id,
+      email: decoded.email
+    };
+  } catch (error) {
+    throw new Error('Invalid token');
   }
-
+}
   /**
    * Get users for email campaigns
    */
