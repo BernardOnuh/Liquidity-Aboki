@@ -8,6 +8,14 @@ import { validateRequest } from '../middleware/validation.middleware';
 const router = Router();
 const authController = new AuthController();
 
+// Handle trailing slashes middleware
+router.use((req, res, next) => {
+  if (req.path.endsWith('/') && req.path.length > 1) {
+    req.url = req.url.slice(0, -1);
+  }
+  next();
+});
+
 // Validation schemas
 const loginValidation = [
   body('email')
@@ -30,7 +38,7 @@ const registerValidation = [
     .withMessage('Name must be at least 2 characters long')
 ];
 
-// NEW: Password reset validations
+// Password reset validations
 const forgotPasswordValidation = [
   body('email')
     .isEmail()
