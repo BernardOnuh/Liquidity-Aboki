@@ -115,7 +115,7 @@ export class AbokiEmailService {
    * Send password reset email
    */
   async sendPasswordResetEmail(userEmail: string, userName: string, resetToken: string): Promise<EmailResult> {
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/reset-password?token=${resetToken}`;
     
     const emailData: EmailData = {
       subject: "Reset Your ABOKI Password 🔑",
